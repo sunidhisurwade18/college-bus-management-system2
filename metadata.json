@@ -1,0 +1,6 @@
+{
+  "name": "Smart College Bus Tracking & Management System",
+  "description": "Centralized college bus tracking, route & stop scheduling, daily bus allocation, same-day bus replacement, driver trip console, and capacity management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
