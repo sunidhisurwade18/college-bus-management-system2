@@ -17,7 +17,10 @@ import {
   FileText,
   AlertCircle,
   HelpCircle,
+  Camera,
+  QrCode,
 } from 'lucide-react';
+import { BusPassScannerModal } from '../pass/BusPassScannerModal';
 
 export const DriverDashboard: React.FC = () => {
   const {
@@ -48,6 +51,8 @@ export const DriverDashboard: React.FC = () => {
 
   const [showSOSModal, setShowSOSModal] = useState(false);
   const [sosLocation, setSosLocation] = useState('Ring Road intersection, Rau highway exit');
+
+  const [showQRScanner, setShowQRScanner] = useState(false);
 
   if (!currentDriver || !driverRoute || !driverBus || !driverAssignment) {
     return (
@@ -224,6 +229,15 @@ export const DriverDashboard: React.FC = () => {
         {/* Operational Incident Reporting Strip */}
         <div className="pt-2 flex flex-wrap items-center gap-2">
           <button
+            onClick={() => setShowQRScanner(true)}
+            className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+            title="Scan student digital bus pass QR code"
+          >
+            <Camera className="w-4 h-4" />
+            <span>📷 Scan Student QR Pass (पास सत्यापन)</span>
+          </button>
+
+          <button
             onClick={() => setShowDelayModal(true)}
             className="px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
           >
@@ -332,10 +346,20 @@ export const DriverDashboard: React.FC = () => {
               <h3 className="text-sm font-bold text-slate-900">Student Passenger Manifest</h3>
               <p className="text-xs text-slate-500">Boarding roster for today's trip</p>
             </div>
-            <div className="flex items-center gap-1.5 text-xs text-slate-600">
-              <Users className="w-3.5 h-3.5 text-purple-600" />
-              <span className="font-bold tabular-nums">{occupancy.assignedCount}</span>
-              <span>Students</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowQRScanner(true)}
+                className="px-2.5 py-1 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-900 text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                title="Open gate QR scanner"
+              >
+                <Camera className="w-3.5 h-3.5 text-purple-700" />
+                <span>Verify Gate QR</span>
+              </button>
+              <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                <Users className="w-3.5 h-3.5 text-purple-600" />
+                <span className="font-bold tabular-nums">{occupancy.assignedCount}</span>
+                <span>Students</span>
+              </div>
             </div>
           </div>
 
@@ -555,6 +579,13 @@ export const DriverDashboard: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Driver Gate QR Scanner Modal */}
+      <BusPassScannerModal
+        isOpen={showQRScanner}
+        onClose={() => setShowQRScanner(false)}
+        defaultBusNumber={driverBus.busNumber}
+      />
     </div>
   );
 };

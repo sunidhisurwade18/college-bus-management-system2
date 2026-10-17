@@ -1,5 +1,9 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { BusPass } from '../../types';
+import { RealQRCode } from './RealQRCode';
+import { QRDetailsModal } from './QRDetailsModal';
+import { BusPassScannerModal } from './BusPassScannerModal';
+import { generatePassQRPayload } from '../../utils/qrHelper';
 import {
   Bus as BusIcon,
   ShieldCheck,
@@ -12,6 +16,8 @@ import {
   Sparkles,
   QrCode as QrCodeIcon,
   ExternalLink,
+  Camera,
+  Maximize2,
 } from 'lucide-react';
 
 interface DigitalBusPassCardProps {
@@ -24,6 +30,8 @@ export const DigitalBusPassCard: React.FC<DigitalBusPassCardProps> = ({
   showPrintButton = true,
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
+  const [showQRDetails, setShowQRDetails] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
 
   const handlePrint = () => {
     window.print();
@@ -32,6 +40,8 @@ export const DigitalBusPassCard: React.FC<DigitalBusPassCardProps> = ({
   const isExpired = pass.status === 'Expired';
   const isPending = pass.status === 'Pending Renewal';
   const isActive = pass.status === 'Active';
+
+  const qrPayload = generatePassQRPayload(pass);
 
   return (
     <div className="w-full max-w-md mx-auto">
@@ -193,7 +203,7 @@ export const DigitalBusPassCard: React.FC<DigitalBusPassCardProps> = ({
         <div className="relative z-10 mt-4 grid grid-cols-2 gap-3 text-xs">
           <div className="p-2.5 rounded-xl bg-purple-900/30 border border-purple-500/20">
             <div className="flex items-center gap-1.5 text-purple-300 text-[10px] uppercase font-bold">
-              <Calendar className="w-3 h-3" />
+              <Calendar className="w-3 3" />
               <span>Validity Period</span>
             </div>
             <div className="font-mono text-[11px] text-white mt-1 font-semibold">
@@ -224,7 +234,7 @@ export const DigitalBusPassCard: React.FC<DigitalBusPassCardProps> = ({
           </div>
         </div>
 
-        {/* QR Code & Barcode Verification Zone */}
+        {/* QR Code & Barcode Verification Zone with Real 2D Barcode */}
         <div className="relative z-10 mt-4 pt-4 border-t border-purple-500/20 flex items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-1 text-[11px] font-bold text-purple-200">
@@ -232,97 +242,87 @@ export const DigitalBusPassCard: React.FC<DigitalBusPassCardProps> = ({
               <span>Digital Scan Verification</span>
             </div>
             <p className="text-[10px] text-slate-400 max-w-[210px] leading-tight">
-              Present this digital pass or physical printout to the driver upon boarding.
+              Scannable by any mobile camera or conductor terminal for instant gate verification.
             </p>
-            {/* Fake barcode bars visual */}
-            <div className="flex items-center gap-[2px] h-5 opacity-70 mt-1">
-              {[3, 1, 4, 1, 5, 2, 6, 2, 3, 1, 4, 2, 5, 1, 3, 2, 4, 1, 3, 5, 2, 4, 1, 6, 2].map(
-                (w, i) => (
-                  <span
-                    key={i}
-                    style={{ width: `${w * 1.5}px` }}
-                    className="h-full bg-purple-200 rounded-xs"
-                  />
-                )
-              )}
-            </div>
-          </div>
-
-          {/* Stylized QR Code Container */}
-          <div className="w-20 h-20 rounded-2xl bg-white p-1.5 shadow-lg flex items-center justify-center shrink-0">
-            <svg
-              viewBox="0 0 100 100"
-              className="w-full h-full text-slate-900 fill-current"
+            <button
+              onClick={() => setShowQRDetails(true)}
+              className="mt-1 text-[10px] text-pink-300 hover:text-white underline font-semibold flex items-center gap-1 cursor-pointer"
             >
-              {/* Outer corners */}
-              <rect x="0" y="0" width="28" height="28" rx="4" />
-              <rect x="4" y="4" width="20" height="20" rx="2" fill="white" />
-              <rect x="8" y="8" width="12" height="12" rx="1" fill="currentColor" />
-
-              <rect x="72" y="0" width="28" height="28" rx="4" />
-              <rect x="76" y="4" width="20" height="20" rx="2" fill="white" />
-              <rect x="80" y="8" width="12" height="12" rx="1" fill="currentColor" />
-
-              <rect x="0" y="72" width="28" height="28" rx="4" />
-              <rect x="4" y="76" width="20" height="20" rx="2" fill="white" />
-              <rect x="8" y="80" width="12" height="12" rx="1" fill="currentColor" />
-
-              {/* Data matrix dots */}
-              <rect x="36" y="4" width="8" height="8" rx="1" />
-              <rect x="48" y="4" width="8" height="8" rx="1" />
-              <rect x="60" y="4" width="8" height="8" rx="1" />
-              <rect x="36" y="16" width="8" height="8" rx="1" />
-              <rect x="48" y="16" width="8" height="8" rx="1" />
-
-              <rect x="4" y="36" width="8" height="8" rx="1" />
-              <rect x="16" y="36" width="8" height="8" rx="1" />
-              <rect x="4" y="48" width="8" height="8" rx="1" />
-              <rect x="16" y="48" width="8" height="8" rx="1" />
-
-              <rect x="36" y="36" width="12" height="12" rx="2" fill="#7e22ce" />
-              <rect x="52" y="36" width="8" height="8" rx="1" />
-              <rect x="64" y="36" width="8" height="8" rx="1" />
-              <rect x="76" y="36" width="8" height="8" rx="1" />
-              <rect x="88" y="36" width="8" height="8" rx="1" />
-
-              <rect x="36" y="52" width="8" height="8" rx="1" />
-              <rect x="48" y="52" width="12" height="12" rx="2" />
-              <rect x="64" y="52" width="8" height="8" rx="1" />
-              <rect x="80" y="52" width="8" height="8" rx="1" />
-
-              <rect x="36" y="68" width="8" height="8" rx="1" />
-              <rect x="52" y="68" width="8" height="8" rx="1" />
-              <rect x="72" y="68" width="8" height="8" rx="1" />
-              <rect x="84" y="68" width="8" height="8" rx="1" />
-
-              <rect x="36" y="84" width="16" height="8" rx="1" />
-              <rect x="56" y="84" width="8" height="8" rx="1" />
-              <rect x="72" y="84" width="8" height="8" rx="1" />
-              <rect x="88" y="84" width="8" height="8" rx="1" />
-            </svg>
+              <Maximize2 className="w-3 h-3" />
+              <span>Tap to Enlarge QR &amp; Raw Details</span>
+            </button>
           </div>
+
+          {/* REAL DYNAMIC QR CODE CONTAINER */}
+          <button
+            onClick={() => setShowQRDetails(true)}
+            className="w-22 h-22 rounded-2xl bg-white p-1.5 shadow-xl hover:scale-105 transition-transform flex flex-col items-center justify-center shrink-0 border-2 border-purple-300/40 cursor-pointer group"
+            title="Click to enlarge scannable QR code"
+          >
+            <RealQRCode
+              value={qrPayload}
+              size={76}
+              colorDark="#0f172a"
+              colorLight="#ffffff"
+              errorCorrectionLevel="M"
+            />
+            <span className="text-[8px] font-black tracking-tight text-slate-700 uppercase group-hover:text-purple-700 mt-0.5">
+              SCAN QR
+            </span>
+          </button>
         </div>
       </div>
 
-      {/* Action Strip: Print / Download */}
+      {/* Action Strip: Print / Inspect / Scan */}
       {showPrintButton && (
-        <div className="mt-4 flex items-center justify-between gap-3 print:hidden">
+        <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 print:hidden">
           <div className="text-xs text-slate-500 flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            <span>Active digital credentials saved on device</span>
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>Real 2D QR Code Active &amp; Scannable</span>
           </div>
 
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setShowQRDetails(true)}
+              className="px-3 py-1.5 rounded-xl border border-purple-200 bg-white hover:bg-purple-50 text-purple-900 font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+            >
+              <QrCodeIcon className="w-3.5 h-3.5 text-purple-600" />
+              <span>Inspect QR</span>
+            </button>
+
+            <button
+              onClick={() => setShowScanner(true)}
+              className="px-3 py-1.5 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-900 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Camera className="w-3.5 h-3.5 text-purple-700" />
+              <span>Test Scanner</span>
+            </button>
+
+            <button
               onClick={handlePrint}
-              className="px-3.5 py-2 rounded-xl bg-purple-600 text-white font-bold text-xs flex items-center gap-1.5 hover:bg-purple-700 transition-colors shadow-sm cursor-pointer"
+              className="px-3.5 py-1.5 rounded-xl bg-purple-600 text-white font-bold text-xs flex items-center gap-1.5 hover:bg-purple-700 transition-colors shadow-sm cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>Print / Save PDF</span>
+              <span>Print / PDF</span>
             </button>
           </div>
         </div>
       )}
+
+      {/* Enlarged QR Details Modal */}
+      <QRDetailsModal
+        pass={pass}
+        isOpen={showQRDetails}
+        onClose={() => setShowQRDetails(false)}
+        onOpenScanner={() => setShowScanner(true)}
+      />
+
+      {/* Gate Scanner Modal */}
+      <BusPassScannerModal
+        isOpen={showScanner}
+        onClose={() => setShowScanner(false)}
+        defaultBusNumber={pass.busNumber}
+      />
     </div>
   );
 };

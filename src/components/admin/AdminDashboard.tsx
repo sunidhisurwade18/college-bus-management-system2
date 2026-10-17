@@ -31,6 +31,7 @@ import {
   Layers,
   Timer,
   ChevronRight,
+  Camera,
 } from 'lucide-react';
 import {
   Bus,
@@ -43,6 +44,9 @@ import {
   BusPass,
 } from '../../types';
 import { DigitalBusPassModal } from '../pass/DigitalBusPassModal';
+import { BusPassScannerModal } from '../pass/BusPassScannerModal';
+import { QRDetailsModal } from '../pass/QRDetailsModal';
+import { MasterDatabaseViewer } from './MasterDatabaseViewer';
 
 export const AdminDashboard: React.FC = () => {
   const {
@@ -97,6 +101,7 @@ export const AdminDashboard: React.FC = () => {
     | 'complaints'
     | 'broadcast'
     | 'reports'
+    | 'database'
   >('allocations');
 
   // Interactive Route & Schedule Panel State
@@ -126,6 +131,8 @@ export const AdminDashboard: React.FC = () => {
 
   // Bus Pass Management State
   const [viewingPass, setViewingPass] = useState<BusPass | null>(null);
+  const [inspectingQRPass, setInspectingQRPass] = useState<BusPass | null>(null);
+  const [showAdminScanner, setShowAdminScanner] = useState(false);
   const [showIssuePassModal, setShowIssuePassModal] = useState(false);
   const [passSearch, setPassSearch] = useState('');
   const [passFilterStatus, setPassFilterStatus] = useState<string>('all');
@@ -782,6 +789,19 @@ export const AdminDashboard: React.FC = () => {
           }`}
         >
           Reports &amp; Logs
+        </button>
+
+        <button
+          onClick={() => setActiveTab('database')}
+          className={`px-3 py-1.5 rounded-xl transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
+            activeTab === 'database'
+              ? 'bg-purple-600 text-white shadow-xs'
+              : 'text-slate-600 hover:bg-purple-50'
+          }`}
+        >
+          <Database className="w-3.5 h-3.5" />
+          <span>Master Database</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-400" />
         </button>
       </div>
 
@@ -1710,13 +1730,24 @@ export const AdminDashboard: React.FC = () => {
                 </p>
               </div>
 
-              <button
-                onClick={() => setShowIssuePassModal(true)}
-                className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-2 shadow-sm transition-colors cursor-pointer self-start sm:self-auto"
-              >
-                <Plus className="w-4 h-4" />
-                <span>+ Issue New Bus Pass</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                <button
+                  onClick={() => setShowAdminScanner(true)}
+                  className="px-4 py-2.5 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-900 text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer border border-purple-200/80 shadow-2xs"
+                  title="Open live gate QR scanner"
+                >
+                  <Camera className="w-4 h-4 text-purple-700" />
+                  <span>📷 Gate QR Scanner</span>
+                </button>
+
+                <button
+                  onClick={() => setShowIssuePassModal(true)}
+                  className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-2 shadow-sm transition-colors cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>+ Issue New Bus Pass</span>
+                </button>
+              </div>
             </div>
 
             {/* Metrics Ribbon */}
@@ -1925,11 +1956,19 @@ export const AdminDashboard: React.FC = () => {
                           <td className="py-3 px-4 text-right">
                             <div className="flex items-center justify-end gap-1.5">
                               <button
+                                onClick={() => setInspectingQRPass(pass)}
+                                className="px-2.5 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-900 font-bold text-xs flex items-center gap-1 border border-purple-200 transition-colors cursor-pointer"
+                                title="Inspect Scannable QR Code & Unique Identity Details"
+                              >
+                                <QrCode className="w-3.5 h-3.5 text-purple-600" />
+                                <span>QR Data</span>
+                              </button>
+
+                              <button
                                 onClick={() => setViewingPass(pass)}
                                 className="px-2.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
                                 title="View & Print Digital Pass Card"
                               >
-                                <QrCode className="w-3.5 h-3.5" />
                                 <span>View Pass</span>
                               </button>
 
@@ -2547,6 +2586,9 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* TAB 10: MASTER DATABASE VIEWER & LIVE STORAGE INSPECTOR */}
+      {activeTab === 'database' && <MasterDatabaseViewer />}
 
       {/* SAME-DAY BUS SWAP MODAL (SRS Section 11) */}
       {showSwapModal && (
@@ -3695,6 +3737,25 @@ export const AdminDashboard: React.FC = () => {
         isOpen={!!viewingPass}
         onClose={() => setViewingPass(null)}
       />
+
+      {/* GATE QR SCANNER MODAL */}
+      <BusPassScannerModal
+        isOpen={showAdminScanner}
+        onClose={() => setShowAdminScanner(false)}
+      />
+
+      {/* ENLARGED QR DETAILS MODAL */}
+      {inspectingQRPass && (
+        <QRDetailsModal
+          pass={inspectingQRPass}
+          isOpen={!!inspectingQRPass}
+          onClose={() => setInspectingQRPass(null)}
+          onOpenScanner={() => {
+            setInspectingQRPass(null);
+            setShowAdminScanner(true);
+          }}
+        />
+      )}
     </div>
   );
 };

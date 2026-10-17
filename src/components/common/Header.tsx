@@ -12,8 +12,11 @@ import {
   AlertTriangle,
   ChevronDown,
   Check,
+  Camera,
+  QrCode,
 } from 'lucide-react';
 import { UserRole } from '../../types';
+import { BusPassScannerModal } from '../pass/BusPassScannerModal';
 
 interface HeaderProps {
   onOpenNotifications: () => void;
@@ -43,6 +46,7 @@ export const Header: React.FC<HeaderProps> = ({
   } = useBus();
 
   const [showRoleMenu, setShowRoleMenu] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
   const unreadCount = notifications.filter((n) => !n.read).length;
   const activeBreakdownsCount = breakdowns.filter((b) => !b.resolved).length;
 
@@ -115,6 +119,16 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Right Zone: Controls & Actions */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {/* Quick Gate QR Scanner */}
+          <button
+            onClick={() => setShowScanner(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-xs transition-all cursor-pointer"
+            title="Scan student digital bus pass QR code (गेट पास सत्यापन)"
+          >
+            <Camera className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">QR Scanner</span>
+          </button>
+
           {/* How to Use / Guide button */}
           <button
             onClick={onOpenGuide}
@@ -314,6 +328,12 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Global Quick Gate QR Scanner Modal */}
+      <BusPassScannerModal
+        isOpen={showScanner}
+        onClose={() => setShowScanner(false)}
+      />
     </header>
   );
 };

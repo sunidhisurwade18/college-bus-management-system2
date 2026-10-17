@@ -26,6 +26,7 @@ import {
   INITIAL_SCHEDULED_TRIPS,
   INITIAL_BUS_PASSES,
 } from '../data/initialData';
+import { generatePassQRPayload } from '../utils/qrHelper';
 
 interface OccupancyInfo {
   busId: string;
@@ -92,7 +93,7 @@ interface BusContextType {
 
   updateStudentPickupStop: (studentId: string, routeId: string, stopId: string) => void;
   updateStudentProfile: (studentId: string, updates: Partial<Student>) => void;
-  addStudent: (student: Omit<Student, 'id'>) => void;
+  addStudent: (student: Omit<Student, 'id'>, autoGeneratePass?: boolean) => void;
   deleteStudent: (studentId: string) => void;
   bulkAddDemoStudents: (count?: number) => void;
 
@@ -124,6 +125,13 @@ interface BusContextType {
   // Bus pass actions
   issueBusPass: (pass: Omit<BusPass, 'id' | 'issuedDate'>) => void;
   updateBusPassStatus: (passId: string, status: BusPass['status'], feeStatus?: BusPass['feeStatus']) => void;
+  renewBusPass: (
+    passId: string,
+    extensionMonths?: number,
+    newStatus?: BusPass['status'],
+    feeStatus?: BusPass['feeStatus'],
+    customValidUntil?: string
+  ) => void;
   deleteBusPass: (passId: string) => void;
 
   getBusOccupancy: (busId: string) => OccupancyInfo;
@@ -683,16 +691,72 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setStudents((prev) => prev.map((s) => (s.id === studentId ? { ...s, ...updates } : s)));
   };
 
-  const addStudent = (studentData: Omit<Student, 'id'>) => {
+  const addStudent = (studentData: Omit<Student, 'id'>, autoGeneratePass: boolean = true) => {
+    const newStudentId = `stu-${Date.now()}`;
     const newStudent: Student = {
       ...studentData,
-      id: `stu-${Date.now()}`,
+      id: newStudentId,
     };
     setStudents((prev) => [newStudent, ...prev]);
+
+    if (autoGeneratePass) {
+      const targetRoute = routes.find((r) => r.id === studentData.routeId) || routes[0];
+      const targetStop =
+        targetRoute?.stops.find((s) => s.stopId === studentData.pickupStopId) || targetRoute?.stops[0];
+      const routeAssignment = assignments.find((a) => a.routeId === targetRoute?.id);
+      const assignedBus = buses.find((b) => b.id === routeAssignment?.busId) || buses[0];
+
+      // Auto validity: 1 full academic year from today
+      const expDate = new Date();
+      expDate.setFullYear(expDate.getFullYear() + 1);
+      const validUntilStr = expDate.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      });
+
+      const autoPass: BusPass = {
+        id: `PASS-2026-${newStudent.enrollmentNumber.slice(-4) || Math.floor(1000 + Math.random() * 9000)}`,
+        studentId: newStudentId,
+        studentName: newStudent.name,
+        enrollmentNumber: newStudent.enrollmentNumber,
+        department: newStudent.department,
+        semester: newStudent.semester,
+        routeId: targetRoute?.id || 'route-rau',
+        routeName: targetRoute?.name || 'Rau - Campus Express Line',
+        pickupStopId: targetStop?.stopId || 'stop-rajendra-nagar',
+        pickupStopName: targetStop ? `${targetStop.stopName} (Stop #${targetStop.sequence})` : 'Main Campus Gate',
+        busNumber: assignedBus?.busNumber || 'BUS-12',
+        validFrom: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        validUntil: validUntilStr,
+        status: 'Active',
+        feeStatus: 'Paid',
+        feeAmount: 8500,
+        qrCodeData: '',
+        issuedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        avatarUrl: newStudent.avatarUrl,
+      };
+      autoPass.qrCodeData = generatePassQRPayload(autoPass);
+
+      setBusPasses((prev) => [autoPass, ...prev]);
+
+      const notif: SystemNotification = {
+        id: `notif-${Date.now()}`,
+        targetAudience: 'all',
+        targetStudentId: newStudentId,
+        title: `Digital Bus Pass Auto-Generated: ${newStudent.name}`,
+        message: `Bus Pass with cryptographic QR code generated automatically for ${newStudent.name} (${newStudent.enrollmentNumber}) on ${targetRoute?.name} (${autoPass.busNumber}). Valid until ${validUntilStr}.`,
+        type: 'announcement',
+        createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        read: false,
+      };
+      setNotifications((prev) => [notif, ...prev]);
+    }
   };
 
   const deleteStudent = (studentId: string) => {
     setStudents((prev) => prev.filter((s) => s.id !== studentId));
+    setBusPasses((prev) => prev.filter((p) => p.studentId !== studentId));
   };
 
   const bulkAddDemoStudents = (count: number = 25) => {
@@ -701,15 +765,28 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const departments = ['Computer Science', 'Information Tech', 'Electronics', 'Mechanical', 'Civil Engg'];
 
     const newBatch: Student[] = [];
+    const newPasses: BusPass[] = [];
+
+    const expDate = new Date();
+    expDate.setFullYear(expDate.getFullYear() + 1);
+    const validUntilStr = expDate.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+
     for (let i = 0; i < count; i++) {
       const fn = firstNames[Math.floor(Math.random() * firstNames.length)];
       const ln = lastNames[Math.floor(Math.random() * lastNames.length)];
       const targetRoute = routes[i % routes.length] || routes[0];
       const targetStop = targetRoute.stops[Math.floor(Math.random() * targetRoute.stops.length)] || targetRoute.stops[0];
       const enroll = `0801CS22${1100 + students.length + i}`;
+      const stuId = `stu-bulk-${Date.now()}-${i}`;
+      const routeAssignment = assignments.find((a) => a.routeId === targetRoute.id);
+      const assignedBus = buses.find((b) => b.id === routeAssignment?.busId) || buses[0];
 
-      newBatch.push({
-        id: `stu-bulk-${Date.now()}-${i}`,
+      const studentItem: Student = {
+        id: stuId,
         enrollmentNumber: enroll,
         name: `${fn} ${ln}`,
         email: `${fn.toLowerCase()}.${ln.toLowerCase()}@college.edu.in`,
@@ -718,10 +795,35 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         semester: `${(i % 8) + 1}th Semester`,
         routeId: targetRoute.id,
         pickupStopId: targetStop.stopId,
-      });
+      };
+      newBatch.push(studentItem);
+
+      const passItem: BusPass = {
+        id: `PASS-2026-${enroll.slice(-4)}`,
+        studentId: stuId,
+        studentName: studentItem.name,
+        enrollmentNumber: enroll,
+        department: studentItem.department,
+        semester: studentItem.semester,
+        routeId: targetRoute.id,
+        routeName: targetRoute.name,
+        pickupStopId: targetStop.stopId,
+        pickupStopName: `${targetStop.stopName} (Stop #${targetStop.sequence})`,
+        busNumber: assignedBus?.busNumber || 'BUS-12',
+        validFrom: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        validUntil: validUntilStr,
+        status: 'Active',
+        feeStatus: 'Paid',
+        feeAmount: 8500,
+        qrCodeData: '',
+        issuedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      };
+      passItem.qrCodeData = generatePassQRPayload(passItem);
+      newPasses.push(passItem);
     }
 
     setStudents((prev) => [...prev, ...newBatch]);
+    setBusPasses((prev) => [...newPasses, ...prev]);
   };
 
   // Fleet & Routes
